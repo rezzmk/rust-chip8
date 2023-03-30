@@ -82,11 +82,6 @@ impl State {
     }
 
     fn execute_opcode(&mut self, opcode: u16) {
-        // 0000 0000 0000 0000
-        // 0000                 >> 12
-        //      0000            >> 8
-        //           0000       >> 4
-        //                0000
         let nibbles = (
             (opcode & 0xF000) >> 12 as u8,
             (opcode & 0x0F00) >> 8 as u8,
@@ -94,10 +89,10 @@ impl State {
             (opcode & 0x000F) as u8,
         );
 
-        println!(
+        /*println!(
             "opcode: {:#X} -> nibble 1: {:#X}, nibble 1: {:#X}, nibble 1: {:#X}, nibble 1: {:#X}",
             opcode, nibbles.0, nibbles.1, nibbles.2, nibbles.3
-        );
+        );*/
 
         let _pc_change = match nibbles {
             (0x00, 0x00, 0x0e, 0x00) => self.op_00e0(),
@@ -359,25 +354,6 @@ impl State {
             self.pc += 2;
         }
     }
-
-    /*fn op_exa1(&mut self, opcode: u16) {
-        let x = ((opcode & 0x0F00) >> 8) as usize;
-        if !self.keypad[self.v[x] as usize] {
-            self.pc += 4;
-        } else {
-            let pixel = self.memory[(self.i + row) as usize];
-            for x in 0..8 {
-                if pixel & (0x80 >> x) != 0 {
-                    let index = ((vx + x + ((vy + y) * 64)) % (64 * 32)) as usize;
-                    if self.display[index] {
-                        self.v[0xF] = 1;
-                    }
-                    self.display[index] ^= true;
-                }
-            }
-            self.pc += 2;
-        }
-    }*/
 
     fn op_fx07(&mut self, opcode: u16) {
         let x = ((opcode & 0x0F00) >> 8) as usize;

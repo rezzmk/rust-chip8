@@ -76,11 +76,11 @@ fn main() {
         chip8.update_timers();
         draw_display(&chip8, &mut canvas);
 
-        let delay_per_instruction = 20;
+        let delay_per_instruction = 500;
 
         let elapsed = start_time.elapsed();
-        if elapsed < Duration::from_millis(delay_per_instruction) {
-            std::thread::sleep(Duration::from_millis(delay_per_instruction) - elapsed);
+        if elapsed < Duration::from_micros(delay_per_instruction) {
+            std::thread::sleep(Duration::from_micros(delay_per_instruction) - elapsed);
         }
     }
 }
