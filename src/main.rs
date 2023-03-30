@@ -1,15 +1,11 @@
 mod chip8;
 
 use sdl2::event::Event;
+use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
-use sdl2::render::Canvas;
-use sdl2::video::Window;
-use sdl2::keyboard::Keycode;
-use std::time::{Duration, Instant};
-use std::fs::File;
-use std::path::Path;
 use std::env;
+use std::time::{Duration, Instant};
 
 const WIDTH: u32 = 64 * 10;
 const HEIGHT: u32 = 32 * 10;
@@ -39,9 +35,6 @@ fn main() {
         return;
     }
 
-    let mut timer = Instant::now();
-    let mut frame_timer = Instant::now();
-
     let mut running: bool = true;
 
     while running {
@@ -49,17 +42,27 @@ fn main() {
 
         for event in event_pump.poll_iter() {
             match event {
-                Event::Quit { .. } | Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
+                Event::Quit { .. }
+                | Event::KeyDown {
+                    keycode: Some(Keycode::Escape),
+                    ..
+                } => {
                     println!("Escape pressed...");
                     running = false;
                 }
-                Event::KeyDown { keycode: Some(keycode), .. } => {
+                Event::KeyDown {
+                    keycode: Some(keycode),
+                    ..
+                } => {
                     if let Some(chip8_key) = map_keycode_to_chip8_key(keycode) {
                         println!("Key DOWN: {}", chip8_key);
                         chip8.key_down(chip8_key);
                     }
                 }
-                Event::KeyUp { keycode: Some(keycode), .. } => {
+                Event::KeyUp {
+                    keycode: Some(keycode),
+                    ..
+                } => {
                     if let Some(chip8_key) = map_keycode_to_chip8_key(keycode) {
                         println!("Key UP: {}", chip8_key);
                         chip8.key_up(chip8_key);
@@ -73,9 +76,11 @@ fn main() {
         chip8.update_timers();
         draw_display(&chip8, &mut canvas);
 
+        let delay_per_instruction = 20;
+
         let elapsed = start_time.elapsed();
-        if elapsed < Duration::from_millis(200) {
-            std::thread::sleep(Duration::from_millis(200) - elapsed);
+        if elapsed < Duration::from_millis(delay_per_instruction) {
+            std::thread::sleep(Duration::from_millis(delay_per_instruction) - elapsed);
         }
     }
 }
@@ -124,4 +129,3 @@ fn draw_display(chip8: &chip8::State, canvas: &mut sdl2::render::Canvas<sdl2::vi
 
     canvas.present();
 }
-

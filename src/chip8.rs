@@ -1,7 +1,7 @@
 use rand::Rng;
-use std::path::Path;
 use std::fs::File;
 use std::io::Read;
+use std::path::Path;
 
 // http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#font
 const FONTSET: [u8; 80] = [
@@ -20,20 +20,20 @@ const FONTSET: [u8; 80] = [
     0xF0, 0x80, 0x80, 0x80, 0xF0, // C
     0xE0, 0x90, 0x90, 0x90, 0xE0, // D
     0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
-    0xF0, 0x80, 0xF0, 0x80, 0x80  // F
+    0xF0, 0x80, 0xF0, 0x80, 0x80, // F
 ];
 
 pub struct State {
-    memory: [u8; 4096],         // 4KB of memory
-    v: [u8; 16],                // 16 8-bit data registers (V0-VF)
-    i: u16,                     // 16-bit index register (I)
-    pc: u16,                    // 16-bit program counter (PC)
-    stack: [u16; 16],           // 16-level stack to store return addresses
-    sp: u8,                     // 8-bit stack pointer (SP)
-    display: [bool; 64 * 32],   // 64x32 pixel monochrome display
-    delay_timer: u8,            // 8-bit delay timer
-    sound_timer: u8,            // 8-bit sound timer
-    keypad: [bool; 16],         // 16-key hexadecimal keypad (0-9, A-F)
+    memory: [u8; 4096],       // 4KB of memory
+    v: [u8; 16],              // 16 8-bit data registers (V0-VF)
+    i: u16,                   // 16-bit index register (I)
+    pc: u16,                  // 16-bit program counter (PC)
+    stack: [u16; 16],         // 16-level stack to store return addresses
+    sp: u8,                   // 8-bit stack pointer (SP)
+    display: [bool; 64 * 32], // 64x32 pixel monochrome display
+    delay_timer: u8,          // 8-bit delay timer
+    sound_timer: u8,          // 8-bit sound timer
+    keypad: [bool; 16],       // 16-key hexadecimal keypad (0-9, A-F)
 }
 
 impl State {
@@ -65,32 +65,28 @@ impl State {
 
     pub fn load_rom<P: AsRef<Path>>(&mut self, path: P) -> std::io::Result<()> {
         let mut file = File::open(path)?;
-
-        let program_start = &mut self.memory[0x200..];
-        let bytes_read = file.read(program_start)?;
-
-        if bytes_read == 0 {
-            return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "The ROM is fked"));
-        }
-
-        self.pc = 0x200 as u16;
-
+        file.read(&mut self.memory[0x200..])?;
         Ok(())
     }
 
     pub fn emulate_cycle(&mut self) {
-        self.execute_opcode();
+        let opcode = self.fetch_opcode();
+        self.execute_opcode(opcode);
         self.update_timers();
     }
 
     fn fetch_opcode(&self) -> u16 {
-        return (self.memory[self.pc as usize] as u16) << 8 | (self.memory[self.pc as usize + 1] as u16)
+        let hi_byte = self.memory[self.pc as usize] as u16;
+        let lo_byte = self.memory[self.pc as usize + 1] as u16;
+        return (hi_byte << 8) | lo_byte;
     }
 
-    fn execute_opcode(&mut self) {
-        let opcode = self.fetch_opcode();
-        println!("opcode: {:#X}", opcode);
-
+    fn execute_opcode(&mut self, opcode: u16) {
+        // 0000 0000 0000 0000
+        // 0000                 >> 12
+        //      0000            >> 8
+        //           0000       >> 4
+        //                0000
         let nibbles = (
             (opcode & 0xF000) >> 12 as u8,
             (opcode & 0x0F00) >> 8 as u8,
@@ -98,7 +94,12 @@ impl State {
             (opcode & 0x000F) as u8,
         );
 
-        let pc_change = match nibbles { 
+        println!(
+            "opcode: {:#X} -> nibble 1: {:#X}, nibble 1: {:#X}, nibble 1: {:#X}, nibble 1: {:#X}",
+            opcode, nibbles.0, nibbles.1, nibbles.2, nibbles.3
+        );
+
+        let _pc_change = match nibbles {
             (0x00, 0x00, 0x0e, 0x00) => self.op_00e0(),
             (0x00, 0x00, 0x0e, 0x0e) => self.op_00ee(),
             (0x01, _, _, _) => self.op_1nnn(opcode),
@@ -133,12 +134,8 @@ impl State {
             (0x0f, _, 0x03, 0x03) => self.op_fx33(opcode),
             (0x0f, _, 0x05, 0x05) => self.op_fx55(opcode),
             (0x0f, _, 0x06, 0x05) => self.op_fx65(opcode),
-            _ => self.pc += 2
+            _ => self.pc += 2,
         };
-    }
-
-    fn op_invalid(&self, opcode: u16) {
-        //println!("Unknown opcode: {:04X}", opcode);
     }
 
     // Clear the display
@@ -296,8 +293,7 @@ impl State {
 
         if self.v[x] != self.v[y] {
             self.pc += 4;
-        }
-        else {
+        } else {
             self.pc += 2;
         }
     }
@@ -322,20 +318,23 @@ impl State {
     }
 
     fn op_dxyn(&mut self, opcode: u16) {
-        let vx = self.v[(opcode & 0x0F00 >> 8) as usize] as u16;
-        let vy = self.v[(opcode & 0x00F0 >> 4) as usize] as u16;
-        let height = opcode & 0x000F;
+        let x = ((opcode & 0x0F00) >> 8) as usize;
+        let y = ((opcode & 0x00F0) >> 4) as usize;
+        let height = (opcode & 0x000F) as usize;
+        let vx = self.v[x] as usize;
+        let vy = self.v[y] as usize;
 
         self.v[0xF] = 0;
-        for y in 0..height {
-            let pixel = self.memory[(self.i + y) as usize];
-            for x in 0..8 {
-                if pixel & (0x80 >> x) != 0 {
-                    let index = ((vx + x + ((vy + y) * 64)) % (64 * 32)) as usize;
-                    if self.display[index] {
+
+        for row in 0..height {
+            let sprite_row = self.memory[self.i as usize + row];
+            for col in 0..8 {
+                if (sprite_row & (0x80 >> col)) != 0 {
+                    let pixel_index = (vx + col + (vy + row) * 64) % (64 * 32);
+                    if self.display[pixel_index] {
                         self.v[0xF] = 1;
                     }
-                    self.display[index] ^= true;
+                    self.display[pixel_index] ^= true;
                 }
             }
         }
@@ -347,8 +346,7 @@ impl State {
         let x = ((opcode & 0x0F00) >> 8) as usize;
         if self.keypad[self.v[x] as usize] {
             self.pc += 4;
-        }
-        else {
+        } else {
             self.pc += 2;
         }
     }
@@ -357,11 +355,29 @@ impl State {
         let x = ((opcode & 0x0F00) >> 8) as usize;
         if !self.keypad[self.v[x] as usize] {
             self.pc += 4;
-        }
-        else {
+        } else {
             self.pc += 2;
         }
     }
+
+    /*fn op_exa1(&mut self, opcode: u16) {
+        let x = ((opcode & 0x0F00) >> 8) as usize;
+        if !self.keypad[self.v[x] as usize] {
+            self.pc += 4;
+        } else {
+            let pixel = self.memory[(self.i + row) as usize];
+            for x in 0..8 {
+                if pixel & (0x80 >> x) != 0 {
+                    let index = ((vx + x + ((vy + y) * 64)) % (64 * 32)) as usize;
+                    if self.display[index] {
+                        self.v[0xF] = 1;
+                    }
+                    self.display[index] ^= true;
+                }
+            }
+            self.pc += 2;
+        }
+    }*/
 
     fn op_fx07(&mut self, opcode: u16) {
         let x = ((opcode & 0x0F00) >> 8) as usize;
@@ -372,22 +388,19 @@ impl State {
     fn op_fx0a(&mut self, opcode: u16) {
         let x = ((opcode & 0x0F00) >> 8) as usize;
 
-        let mut pressed = false;
-        for i in 0..self.keypad.len() {
-            if self.keypad[i] {
-                self.v[x] = i as u8;
-                pressed = true;
+        let key_pressed = self.keypad.iter().position(|&k| k);
+        match key_pressed {
+            Some(key) => {
+                self.v[x] = key as u8;
+                self.pc += 2;
+            }
+            None => {
+                println!("Waiting for keypress");
+                self.pc -= 2
             }
         }
-
-        if !pressed {
-            println!("Waiting for keypress");
-            return;
-        }
-
-        self.pc += 2;
     }
- 
+
     fn op_fx15(&mut self, opcode: u16) {
         let x = ((opcode & 0x0F00) >> 8) as usize;
         self.delay_timer = self.v[x];
@@ -432,7 +445,7 @@ impl State {
         self.pc += 2;
     }
 
-    fn op_fx65(&mut  self, opcode: u16) {
+    fn op_fx65(&mut self, opcode: u16) {
         let x = (opcode & 0x0F00) >> 8;
 
         for i in 0..=x as usize {
