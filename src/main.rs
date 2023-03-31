@@ -6,6 +6,7 @@ use sdl2::pixels::Color;
 use sdl2::rect::Rect;
 use std::env;
 use std::time::{Duration, Instant};
+use colored::Colorize;
 
 const WIDTH: u32 = 64 * 10;
 const HEIGHT: u32 = 32 * 10;
@@ -47,7 +48,7 @@ fn main() {
                     keycode: Some(Keycode::Escape),
                     ..
                 } => {
-                    println!("Escape pressed...");
+                    println!("{}", "Escape pressed...".bold().red());
                     running = false;
                 }
                 Event::KeyDown {
@@ -55,7 +56,7 @@ fn main() {
                     ..
                 } => {
                     if let Some(chip8_key) = map_keycode_to_chip8_key(keycode) {
-                        println!("Key DOWN: {}", chip8_key);
+                        println!("{} {}", "Key Down:".green(), chip8_key);
                         chip8.key_down(chip8_key);
                     }
                 }
@@ -64,7 +65,7 @@ fn main() {
                     ..
                 } => {
                     if let Some(chip8_key) = map_keycode_to_chip8_key(keycode) {
-                        println!("Key UP: {}", chip8_key);
+                        println!("{} {}", "Key Up:".green(), chip8_key);
                         chip8.key_up(chip8_key);
                     }
                 }
@@ -76,7 +77,7 @@ fn main() {
         chip8.update_timers();
         draw_display(&chip8, &mut canvas);
 
-        let delay_per_instruction = 500;
+        let delay_per_instruction = 2000;
 
         let elapsed = start_time.elapsed();
         if elapsed < Duration::from_micros(delay_per_instruction) {
@@ -111,7 +112,7 @@ fn draw_display(chip8: &chip8::State, canvas: &mut sdl2::render::Canvas<sdl2::vi
     canvas.set_draw_color(Color::RGB(0, 0, 0));
     canvas.clear();
 
-    canvas.set_draw_color(Color::RGB(255, 255, 255));
+    canvas.set_draw_color(Color::GREEN);
 
     for y in 0..32 {
         for x in 0..64 {

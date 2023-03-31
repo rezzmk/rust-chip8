@@ -2,8 +2,8 @@ use rand::Rng;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
+use colored::Colorize;
 
-// http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#font
 const FONTSET: [u8; 80] = [
     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
     0x20, 0x60, 0x20, 0x20, 0x70, // 1
@@ -24,16 +24,16 @@ const FONTSET: [u8; 80] = [
 ];
 
 pub struct State {
-    memory: [u8; 4096],       // 4KB of memory
-    v: [u8; 16],              // 16 8-bit data registers (V0-VF)
-    i: u16,                   // 16-bit index register (I)
-    pc: u16,                  // 16-bit program counter (PC)
-    stack: [u16; 16],         // 16-level stack to store return addresses
-    sp: u8,                   // 8-bit stack pointer (SP)
-    display: [bool; 64 * 32], // 64x32 pixel monochrome display
-    delay_timer: u8,          // 8-bit delay timer
-    sound_timer: u8,          // 8-bit sound timer
-    keypad: [bool; 16],       // 16-key hexadecimal keypad (0-9, A-F)
+    memory: [u8; 4096],      
+    v: [u8; 16],             
+    i: u16,                  
+    pc: u16,                 
+    stack: [u16; 16],        
+    sp: u8,                  
+    display: [bool; 64 * 32],
+    delay_timer: u8,         
+    sound_timer: u8,         
+    keypad: [bool; 16],      
 }
 
 impl State {
@@ -89,10 +89,10 @@ impl State {
             (opcode & 0x000F) as u8,
         );
 
-        /*println!(
-            "opcode: {:#X} -> nibble 1: {:#X}, nibble 1: {:#X}, nibble 1: {:#X}, nibble 1: {:#X}",
+        println!(
+            "\t{:#X} [nib 1: {:#X}, nib 2: {:#X}, nib 3: {:#X}, nib 4: {:#X}]",
             opcode, nibbles.0, nibbles.1, nibbles.2, nibbles.3
-        );*/
+        );
 
         let _pc_change = match nibbles {
             (0x00, 0x00, 0x0e, 0x00) => self.op_00e0(),
@@ -147,7 +147,7 @@ impl State {
 
     // Jump to address NNN
     fn op_1nnn(&mut self, opcode: u16) {
-        println!("Jumping to {:#X}", opcode);
+        println!("{} {:#X}", "Jumping to ".bold().green(), opcode);
         self.pc = opcode & 0x0FFF;
     }
 
